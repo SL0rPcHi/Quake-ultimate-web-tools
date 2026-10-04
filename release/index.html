@@ -25,6 +25,7 @@
 	<div class="emscripten" id="status">Please allow/unblock our javascript to play.</div>
 	<div id="dropzone" ondrop="gotdrop(event);" ondragover="event.preventDefault()" hidden=1>Drop Zone</div>
 	<button type="button" onclick="adduserfile()" id="addfile" hidden=1>Add File(s)</button>
+	<button type="button" onclick="addurlfile()" id="addurl" hidden=1>Add From URL</button>
 	<button type="button" onclick="begin()" id="begin" hidden=1>Click To Begin!</button>
 	<div class="emscripten">
 		<progress value="0" max="100" id="progress" hidden=1></progress>  
@@ -182,6 +183,7 @@ function begin()
 	Module.began = true;
 	document.getElementById('dropzone').hidden = true;
 	document.getElementById('addfile').hidden = true;
+	document.getElementById('addurl').hidden = true;
 	document.getElementById('begin').hidden = true;
 	Module.setStatus('Downloading...');
 
@@ -303,6 +305,37 @@ function adduserfile()
 				});
 			}
 		}).catch((e)=>{console.log("showOpenFilePicker() aborted", e);});
+}
+function addurlfile()
+{
+	const url = prompt("Please enter the URL of the file to download:", "");
+	if (url == null || url.trim() == "")
+		return;	//user cancelled
+	
+	const filename = url.split('/').pop().split('?')[0] || "downloaded_file";
+	let gamedir = prompt("Please enter gamedir (or leave empty for auto-detect)", "");
+	if (gamedir != "")
+		gamedir = gamedir+"/";
+	
+	const filepath = fixupfilepath(filename, gamedir);
+	
+	console.log("Downloading: " + url + " -> " + filepath);
+	
+	fetch(url)
+	.then(response => {
+		if (!response.ok)
+			throw new Error(`HTTP Error: ${response.status}`);
+		return response.arrayBuffer();
+	})
+	.then(buffer => {
+		Module.files[filepath] = buffer;
+		console.log("Successfully downloaded: " + filepath + " (" + buffer.byteLength + " bytes)");
+		showfiles();
+	})
+	.catch(error => {
+		console.error("Failed to download file: " + error);
+		alert("Failed to download file:\n" + error);
+	});
 }
 function showfiles()
 {	//print the pending file list in some pretty way
